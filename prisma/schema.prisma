@@ -1,0 +1,118 @@
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- ENUMS ---
+
+enum Plan {
+  FREE
+  PREMIUM
+}
+
+enum PlatformName {
+  SPOTIFY
+  DEEZER
+  APPLE_MUSIC
+  SOUNDCLOUD
+  YOUTUBE_MUSIC
+}
+
+// --- MODELS ---
+
+model User {
+  id               String     @id @default(cuid())
+  email            String     @unique
+  name             String?
+  image            String?    // Photo de profil
+  plan             Plan       @default(FREE)
+  
+  // Intégration Stripe
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String? @unique
+
+  // Relations
+  playlists        Playlist[]
+  accounts         Account[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+}
+
+model Playlist {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  isPublic    Boolean  @default(false)
+  shareToken  String   @unique @default(uuid())
+  
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  // Relation via table pivot pour gérer l'ordre des morceaux
+  tracks      TrackInPlaylist[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Track {
+  id        String   @id @default(cuid())
+  isrc      String   @unique // Clé universelle de correspondance
+  title     String
+  artist    String
+  album     String?
+  duration  Int      // En secondes
+  imageUrl  String?
+  
+  links     PlatformLink[]
+  playlists TrackInPlaylist[]
+  
+  createdAt DateTime @default(now())
+}
+
+// Table pivot pour gérer l'ordre (position) des morceaux dans une playlist
+model TrackInPlaylist {
+  playlistId String
+  trackId    String
+  position   Int      // Pour mémoriser l'ordre des morceaux
+  addedAt    DateTime @default(now())
+
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@id([playlistId, trackId])
+}
+
+model PlatformLink {
+  id           String       @id @default(cuid())
+  platform     PlatformName
+  externalId   String       // ID propre à la plateforme (ex: Spotify ID)
+  url          String       // Lien direct
+  
+  trackId      String
+  track        Track        @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([platform, externalId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String  // "spotify", "deezer", etc.
+  providerAccountId String
+  access_token      String? @db.Text
+  refresh_token     String? @db.Text
+  expires_at        Int?
+  
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
