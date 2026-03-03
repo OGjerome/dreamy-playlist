@@ -1,0 +1,10 @@
+services:
+  db:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_USER: dreamyuser
+      POSTGRES_PASSWORD: dreamypassword
+      POSTGRES_DB: dreamy_playlist_db
+    ports:
+      - "5432:5432"
