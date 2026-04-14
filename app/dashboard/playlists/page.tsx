@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  Download,
-  Heart,
-  MoreHorizontal,
-  Play,
-  Search,
-  Share2,
-  Plus,
-} from "lucide-react";
+import { Heart, Play, Search, Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
