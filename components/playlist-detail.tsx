@@ -8,17 +8,16 @@ import {
   Filter,
   Heart,
   MoreHorizontal,
-  Music,
   Pause,
   Play,
   Plus,
   Search,
   Share2,
   Trash2,
-  XCircle,
 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
+import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,6 +40,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+// Les données ont été simplifiées pour ne garder que les informations générales (sans l'objet 'platforms')
 const tracks = [
   {
     id: 1,
@@ -51,13 +51,6 @@ const tracks = [
       "https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36",
     duration: "3:20",
     isLiked: true,
-    platforms: {
-      spotify: true,
-      deezer: true,
-      youtube: true,
-      apple: true,
-      soundcloud: false,
-    },
   },
   {
     id: 2,
@@ -68,13 +61,6 @@ const tracks = [
       "https://cdn-images.dzcdn.net/images/cover/544862aa5be45bc82ad4ab1a14daf63a/1900x1900-000000-80-0-0.jpg",
     duration: "2:54",
     isLiked: false,
-    platforms: {
-      spotify: true,
-      deezer: false,
-      youtube: true,
-      apple: true,
-      soundcloud: true,
-    },
   },
   {
     id: 3,
@@ -85,13 +71,6 @@ const tracks = [
       "https://m.media-amazon.com/images/I/81nFF-rXdRL._UF894,1000_QL80_.jpg",
     duration: "3:23",
     isLiked: true,
-    platforms: {
-      spotify: true,
-      deezer: true,
-      youtube: true,
-      apple: false,
-      soundcloud: true,
-    },
   },
   {
     id: 4,
@@ -102,13 +81,6 @@ const tracks = [
       "https://i.scdn.co/image/ab67616d0000b273c35ea649223a519a9ad51ccf",
     duration: "3:03",
     isLiked: true,
-    platforms: {
-      spotify: true,
-      deezer: true,
-      youtube: false,
-      apple: true,
-      soundcloud: false,
-    },
   },
   {
     id: 5,
@@ -119,88 +91,8 @@ const tracks = [
       "https://i.scdn.co/image/ab67616d0000b273670ec029374e082f921f9f74",
     duration: "2:58",
     isLiked: false,
-    platforms: {
-      spotify: false,
-      deezer: true,
-      youtube: true,
-      apple: true,
-      soundcloud: true,
-    },
   },
 ];
-
-const platformIcons = {
-  spotify: {
-    name: "Spotify",
-    component: (
-      <div className="w-6 h-6 rounded-full overflow-hidden shadow-lg">
-        <Image
-          src="/spotify.png"
-          alt="Spotify"
-          width={24}
-          height={24}
-          className="w-full h-full object-cover"
-        />
-      </div>
-    ),
-  },
-  deezer: {
-    name: "Deezer",
-    component: (
-      <div className="w-6 h-6 rounded-full overflow-hidden shadow-lg">
-        <Image
-          src="/deezer.jpg"
-          alt="Deezer"
-          width={24}
-          height={24}
-          className="w-full h-full object-cover"
-        />
-      </div>
-    ),
-  },
-  youtube: {
-    name: "YouTube Music",
-    component: (
-      <div className="w-6 h-6 rounded-full overflow-hidden shadow-lg">
-        <Image
-          src="/youtube-music.png"
-          alt="YouTube Music"
-          width={24}
-          height={24}
-          className="w-full h-full object-cover"
-        />
-      </div>
-    ),
-  },
-  apple: {
-    name: "Apple Music",
-    component: (
-      <div className="w-6 h-6 rounded-full overflow-hidden shadow-lg">
-        <Image
-          src="/apple-music.png"
-          alt="Apple Music"
-          width={24}
-          height={24}
-          className="w-full h-full object-cover"
-        />
-      </div>
-    ),
-  },
-  soundcloud: {
-    name: "SoundCloud",
-    component: (
-      <div className="w-6 h-6 rounded-full overflow-hidden shadow-lg">
-        <Image
-          src="/soundcloud.webp"
-          alt="SoundCloud"
-          width={24}
-          height={24}
-          className="w-full h-full object-cover"
-        />
-      </div>
-    ),
-  },
-};
 
 export default function PlaylistDetail() {
   const [selectedTracks, setSelectedTracks] = useState<number[]>([]);
@@ -211,7 +103,7 @@ export default function PlaylistDetail() {
     setSelectedTracks((prev) =>
       prev.includes(trackId)
         ? prev.filter((id) => id !== trackId)
-        : [...prev, trackId]
+        : [...prev, trackId],
     );
   };
 
@@ -219,7 +111,7 @@ export default function PlaylistDetail() {
     setSelectedTracks(
       selectedTracks.length === tracks.length
         ? []
-        : tracks.map((track) => track.id)
+        : tracks.map((track) => track.id),
     );
   };
 
@@ -236,11 +128,14 @@ export default function PlaylistDetail() {
         <div className="bg-gradient-to-b from-violet-900/20 to-gray-950 border-b border-violet-500/20">
           <div className="p-6">
             <Button
+              asChild
               variant="ghost"
               className="text-gray-400 hover:text-white mb-6"
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Retour aux playlists
+              <Link href="/dashboard/playlists">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Retour aux playlists
+              </Link>
             </Button>
 
             <div className="flex items-start gap-6">
@@ -310,7 +205,7 @@ export default function PlaylistDetail() {
                       </DropdownMenuItem>
                       <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-violet-500/20">
                         <Download className="mr-2 h-4 w-4" />
-                        Exporter
+                        Exporter vers Spotify
                       </DropdownMenuItem>
                       <DropdownMenuSeparator className="bg-violet-500/30" />
                       <DropdownMenuItem className="text-red-400 hover:text-red-300 hover:bg-red-500/20">
@@ -321,13 +216,17 @@ export default function PlaylistDetail() {
                   </DropdownMenu>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-400">Disponible sur:</span>
-                  <div className="flex gap-2">
-                    {Object.entries(platformIcons).map(([platform, config]) => (
-                      <div key={platform}>{config.component}</div>
-                    ))}
-                  </div>
+                <div className="flex items-center gap-2 mt-4">
+                  <Badge className="bg-green-500/10 text-green-400 border-green-500/20 px-3 py-1">
+                    <Image
+                      src="/spotify.png"
+                      alt="Spotify"
+                      width={16}
+                      height={16}
+                      className="mr-2 inline-block"
+                    />
+                    Connecté à Spotify
+                  </Badge>
                 </div>
               </div>
             </div>
@@ -366,7 +265,7 @@ export default function PlaylistDetail() {
                   </span>
                   <Button
                     size="sm"
-                    className="bg-gradient-to-r from-violet-500 to-blue-500 hover:from-violet-600 hover:to-blue-600 text-white border-0"
+                    className="bg-green-600 hover:bg-green-700 text-white border-0"
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Exporter la sélection
@@ -399,7 +298,6 @@ export default function PlaylistDetail() {
                     <TableHead className="text-gray-400">#</TableHead>
                     <TableHead className="text-gray-400">Titre</TableHead>
                     <TableHead className="text-gray-400">Album</TableHead>
-                    <TableHead className="text-gray-400">Plateformes</TableHead>
                     <TableHead className="text-gray-400 text-right">
                       <Clock className="w-4 h-4 ml-auto" />
                     </TableHead>
@@ -449,29 +347,6 @@ export default function PlaylistDetail() {
                       <TableCell className="text-gray-400">
                         {track.album}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {Object.entries(track.platforms).map(
-                            ([platform, available]) => (
-                              <div key={platform}>
-                                {available ? (
-                                  platformIcons[
-                                    platform as keyof typeof platformIcons
-                                  ]?.component || (
-                                    <div className="w-5 h-5 bg-gray-500 rounded-full flex items-center justify-center">
-                                      <Music className="w-3 h-3 text-white" />
-                                    </div>
-                                  )
-                                ) : (
-                                  <div className="w-5 h-5 bg-gray-700 rounded-full flex items-center justify-center">
-                                    <XCircle className="w-3 h-3 text-gray-500" />
-                                  </div>
-                                )}
-                              </div>
-                            )
-                          )}
-                        </div>
-                      </TableCell>
                       <TableCell className="text-gray-400 text-right font-mono text-sm">
                         {track.duration}
                       </TableCell>
@@ -520,13 +395,13 @@ export default function PlaylistDetail() {
           <Card className="bg-gray-900/50 border-violet-500/20 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="text-white">
-                Options d&apos;export
+                Exporter vers Spotify
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                <Button className="h-16 bg-black-600 hover:bg-black-800 text-white border-0 flex-col gap-2 shadow-lg">
-                  <div className="w-6 h-6  ">
+                <Button className="h-16 bg-[#1DB954] hover:bg-[#1ed760] text-white border-0 flex-col gap-2 shadow-lg shadow-green-500/30">
+                  <div className="w-6 h-6">
                     <Image
                       src="/spotify.png"
                       alt="Spotify"
@@ -535,55 +410,7 @@ export default function PlaylistDetail() {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  Spotify
-                </Button>
-                <Button className="h-16 bg-white hover:bg-gray-200 text-black border-0 flex-col gap-2 shadow-lg shadow-purple-500/30">
-                  <div className="w-6 h-6  ">
-                    <Image
-                      src="/deezer.jpg"
-                      alt="Deezer"
-                      width={24}
-                      height={24}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  Deezer
-                </Button>
-                <Button className="h-16 bg-[#FD0100] hover:bg-red-600 text-white border-0 flex-col gap-2 shadow-lg shadow-red-500/30">
-                  <div className="w-6 h-6 rounded-full overflow-hidden">
-                    <Image
-                      src="/youtube-music.png"
-                      alt="YouTube Music"
-                      width={24}
-                      height={24}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  YouTube Music
-                </Button>
-                <Button className="h-16 bg-[#FB435A] hover:bg-[#FB435A]/80 text-white border-0 flex-col gap-2 shadow-lg shadow-gray-500/30">
-                  <div className="w-6 h-6 rounded-full overflow-hidden">
-                    <Image
-                      src="/apple-music.png"
-                      alt="Apple Music"
-                      width={24}
-                      height={24}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  Apple Music
-                </Button>
-                <Button className="h-16 bg-[#FF5517] hover:bg-orange-700 text-white border-0 flex-col gap-2 shadow-lg shadow-orange-600/30">
-                  <div className="w-6 h-6 rounded-full overflow-hidden">
-                    <Image
-                      src="/soundcloud.webp"
-                      alt="SoundCloud"
-                      width={24}
-                      height={24}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  SoundCloud
+                  Synchroniser avec Spotify
                 </Button>
               </div>
             </CardContent>

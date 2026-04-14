@@ -306,10 +306,10 @@ export default function Settings() {
                       htmlFor="export-notifications"
                       className="text-gray-300"
                     >
-                      Notifications d&apos;export
+                      Notifications de synchronisation
                     </Label>
                     <p className="text-sm text-gray-500">
-                      Soyez notifié quand vos exports sont terminés
+                      Soyez notifié quand vos exports vers Spotify sont terminés
                     </p>
                   </div>
                   <Switch
@@ -444,8 +444,8 @@ export default function Settings() {
                     <span className="text-white">9,99€/mois</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Plateformes:</span>
-                    <span className="text-white">Illimitées</span>
+                    <span className="text-gray-400">Synchronisation:</span>
+                    <span className="text-white">Spotify Illimité</span>
                   </div>
                 </div>
 
@@ -514,17 +514,19 @@ export default function Settings() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="export-format" className="text-gray-300">
-                    Format d&apos;export par défaut
+                  <Label htmlFor="visibility" className="text-gray-300">
+                    Visibilité par défaut (Spotify)
                   </Label>
-                  <Select defaultValue="m3u">
+                  <Select defaultValue="public">
                     <SelectTrigger className="bg-gray-800/50 border-violet-500/30 text-white">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-gray-900 border-violet-500/30">
-                      <SelectItem value="m3u">M3U</SelectItem>
-                      <SelectItem value="csv">CSV</SelectItem>
-                      <SelectItem value="json">JSON</SelectItem>
+                      <SelectItem value="public">Publique</SelectItem>
+                      <SelectItem value="private">Privée</SelectItem>
+                      <SelectItem value="collaborative">
+                        Collaborative
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

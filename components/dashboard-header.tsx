@@ -1,13 +1,14 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Search, Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { SidebarTrigger } from "@/components/ui/sidebar"
+import { useState } from "react";
+import { Search, Plus } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export function DashboardHeader() {
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState("");
 
   return (
     <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b border-violet-500/20 bg-gray-950/80 backdrop-blur-xl px-6">
@@ -27,13 +28,16 @@ export function DashboardHeader() {
 
       <div className="flex items-center gap-4">
         <Button
+          asChild
           size="sm"
           className="bg-gradient-to-r from-violet-500 to-blue-500 hover:from-violet-600 hover:to-blue-600 text-white border-0 shadow-lg shadow-violet-500/30"
         >
-          <Plus className="w-4 h-4 mr-2" />
-          Nouvelle playlist
+          <Link href="/dashboard/create">
+            <Plus className="w-4 h-4 mr-2" />
+            Nouvelle playlist
+          </Link>
         </Button>
       </div>
     </header>
-  )
+  );
 }

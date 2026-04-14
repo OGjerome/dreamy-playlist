@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+// Les données factices ont été nettoyées de la notion multi-plateforme
 const playlists = [
   {
     id: 1,
@@ -39,7 +40,6 @@ const playlists = [
     icon: "https://external-preview.redd.it/skeleton-wlr-very-chill-playlist-v0-SQkNKj5s_4m-OYB8SOapRtNf3tf1oT3ZQcdev8Y0UJI.jpg?auto=webp&s=c622a1c1963cb1e77137abd029d4f95b677d59b2",
     tracks: 24,
     duration: "1h",
-    platforms: ["spotify", "deezer", "youtube", "apple"],
     lastModified: "Il y a 2 jours",
     isLiked: true,
   },
@@ -49,7 +49,6 @@ const playlists = [
     icon: "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da8465af6680de29e27a02db4585",
     tracks: 18,
     duration: "58min",
-    platforms: ["spotify", "youtube", "soundcloud"],
     lastModified: "Il y a 1 semaine",
     isLiked: false,
   },
@@ -59,7 +58,6 @@ const playlists = [
     icon: "https://i1.sndcdn.com/artworks-000321524016-jw118f-t500x500.jpg",
     tracks: 31,
     duration: "2h 15min",
-    platforms: ["spotify", "deezer", "apple"],
     lastModified: "Il y a 3 jours",
     isLiked: true,
   },
@@ -69,69 +67,10 @@ const playlists = [
     icon: "https://t4.ftcdn.net/jpg/02/70/65/01/360_F_270650173_MZnLWAW6aCmsC2RTrPTLZDsJik4QrjA4.jpg",
     tracks: 45,
     duration: "1h 12min",
-    platforms: ["spotify", "deezer", "youtube", "soundcloud", "apple"],
     lastModified: "Il y a 5 jours",
     isLiked: false,
   },
 ];
-
-const platformIcons = {
-  spotify: (
-    <div className="w-5 h-5 rounded-full flex items-center justify-center shadow-lg shadow-green-500/30 overflow-hidden">
-      <Image
-        src="/spotify.png"
-        alt="Spotify"
-        width={20}
-        height={20}
-        className="w-full h-full object-cover"
-      />
-    </div>
-  ),
-  deezer: (
-    <div className="w-5 h-5 rounded-full flex items-center justify-center shadow-lg shadow-purple-500/30 overflow-hidden">
-      <Image
-        src="/deezer.jpg"
-        alt="Deezer"
-        width={20}
-        height={20}
-        className="w-full h-full object-cover"
-      />
-    </div>
-  ),
-  youtube: (
-    <div className="w-5 h-5 rounded-full flex items-center justify-center shadow-lg shadow-red-500/30 overflow-hidden">
-      <Image
-        src="/youtube-music.png"
-        alt="YouTube Music"
-        width={20}
-        height={20}
-        className="w-full h-full object-cover"
-      />
-    </div>
-  ),
-  apple: (
-    <div className="w-5 h-5 rounded-full flex items-center justify-center shadow-lg shadow-gray-500/30 overflow-hidden">
-      <Image
-        src="/apple-music.png"
-        alt="Apple Music"
-        width={20}
-        height={20}
-        className="w-full h-full object-cover"
-      />
-    </div>
-  ),
-  soundcloud: (
-    <div className="w-5 h-5 rounded-full flex items-center justify-center shadow-lg shadow-orange-600/30 overflow-hidden">
-      <Image
-        src="/soundcloud.webp"
-        alt="SoundCloud"
-        width={20}
-        height={20}
-        className="w-full h-full object-cover"
-      />
-    </div>
-  ),
-};
 
 export default function DashboardPage() {
   return (
@@ -142,7 +81,7 @@ export default function DashboardPage() {
           <div className="space-y-2">
             <h1 className="text-3xl font-bold text-white">Bonjour John 👋</h1>
             <p className="text-gray-400">
-              Gérez vos playlists et exportez-les vers vos plateformes préférées
+              Gérez vos playlists et synchronisez-les avec Spotify
             </p>
           </div>
 
@@ -177,13 +116,13 @@ export default function DashboardPage() {
             <Card className="bg-gray-900/50 border-green-500/30 backdrop-blur-sm hover:bg-gray-900/70 transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-300">
-                  Plateformes
+                  Plateforme
                 </CardTitle>
                 <Link2 className="h-4 w-4 text-green-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-white">5</div>
-                <p className="text-xs text-gray-400">Toutes connectées</p>
+                <div className="text-2xl font-bold text-white">1</div>
+                <p className="text-xs text-gray-400">Spotify connecté</p>
               </CardContent>
             </Card>
 
@@ -290,10 +229,6 @@ export default function DashboardPage() {
                                 <Share2 className="mr-2 h-4 w-4" />
                                 Partager
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-violet-500/20">
-                                <Download className="mr-2 h-4 w-4" />
-                                Exporter
-                              </DropdownMenuItem>
                               <DropdownMenuSeparator className="bg-violet-500/30" />
                               <DropdownMenuItem className="text-red-400 hover:text-red-300 hover:bg-red-500/20">
                                 <Trash2 className="mr-2 h-4 w-4" />
@@ -306,15 +241,16 @@ export default function DashboardPage() {
 
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1">
-                          {playlist.platforms.map((platform) => (
-                            <div key={platform} className="relative">
-                              {
-                                platformIcons[
-                                  platform as keyof typeof platformIcons
-                                ]
-                              }
-                            </div>
-                          ))}
+                          {/* Badge Spotify Unique */}
+                          <div className="relative w-5 h-5 rounded-full flex items-center justify-center shadow-lg shadow-green-500/30 overflow-hidden">
+                            <Image
+                              src="/spotify.png"
+                              alt="Spotify"
+                              width={20}
+                              height={20}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
                         </div>
                         <span className="text-xs text-gray-500">
                           {playlist.lastModified}
@@ -365,16 +301,16 @@ export default function DashboardPage() {
                 </Button>
                 <Button
                   asChild
-                  className="h-20 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 flex-col gap-2 shadow-lg shadow-blue-500/30"
+                  className="h-20 bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 flex-col gap-2 shadow-lg shadow-green-500/30"
                 >
                   <Link href="/dashboard/platforms">
                     <Link2 className="w-6 h-6" />
-                    Connecter une plateforme
+                    Gérer Spotify
                   </Link>
                 </Button>
                 <Button
                   asChild
-                  className="h-20 bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 flex-col gap-2 shadow-lg shadow-green-500/30"
+                  className="h-20 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 flex-col gap-2 shadow-lg shadow-blue-500/30"
                 >
                   <Link href="/dashboard/share">
                     <Share2 className="w-6 h-6" />
