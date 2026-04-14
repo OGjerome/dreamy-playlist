@@ -21,53 +21,23 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 
-const searchResults = [
-  {
-    id: 1,
-    title: "Blinding Lights",
-    artist: "The Weeknd",
-    album: "After Hours",
-    duration: "3:20",
-    platforms: {
-      spotify: true,
-      deezer: true,
-      youtube: true,
-      apple: true,
-      soundcloud: false,
-    },
-    cover: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: 2,
-    title: "Watermelon Sugar",
-    artist: "Harry Styles",
-    album: "Fine Line",
-    duration: "2:54",
-    platforms: {
-      spotify: true,
-      deezer: false,
-      youtube: true,
-      apple: true,
-      soundcloud: true,
-    },
-    cover: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: 3,
-    title: "Don't Start Now",
-    artist: "Dua Lipa",
-    album: "Future Nostalgia",
-    duration: "3:03",
-    platforms: {
-      spotify: true,
-      deezer: true,
-      youtube: false,
-      apple: true,
-      soundcloud: false,
-    },
-    cover: "/placeholder.svg?height=40&width=40",
-  },
-];
+type Track = {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  duration: string;
+  cover: string;
+  spotifyId: string;
+  spotifyUri: string;
+  platforms: {
+    spotify: boolean;
+    deezer: boolean;
+    youtube: boolean;
+    apple: boolean;
+    soundcloud: boolean;
+  };
+};
 
 const platformIcons = {
   spotify: {
@@ -144,27 +114,53 @@ const platformIcons = {
 
 export default function CreatePlaylist() {
   const [playlistName, setPlaylistName] = useState("");
-  const [playlistDescription, setPlaylistDescription] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [selectedTracks, setSelectedTracks] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleAddTrack = (track: any) => {
-    if (!selectedTracks.find((t) => t.id === track.id)) {
-      setSelectedTracks([...selectedTracks, track]);
-    }
-  };
+const [playlistDescription, setPlaylistDescription] = useState("");
+const [searchQuery, setSearchQuery] = useState("");
+const [searchResults, setSearchResults] = useState<Track[]>([]);
+const [selectedTracks, setSelectedTracks] = useState<Track[]>([]);
+const [isSearching, setIsSearching] = useState(false);
+const [searchError, setSearchError] = useState("");
 
-  const handleRemoveTrack = (trackId: number) => {
-    setSelectedTracks(selectedTracks.filter((t) => t.id !== trackId));
-  };
+const handleAddTrack = (track: Track) => {
+  if (!selectedTracks.find((t) => t.id === track.id)) {
+    setSelectedTracks((prev) => [...prev, track]);
+  }
+};
 
-  const handleSearch = () => {
+const handleRemoveTrack = (trackId: string) => {
+  setSelectedTracks((prev) => prev.filter((t) => t.id !== trackId));
+};
+
+const handleSearch = async () => {
+  if (!searchQuery.trim()) {
+    setSearchResults([]);
+    setSearchError("");
+    return;
+  }
+
+  try {
     setIsSearching(true);
-    // Simulate search delay
-    setTimeout(() => setIsSearching(false), 1000);
-  };
+    setSearchError("");
+
+    const response = await fetch(
+      `/api/spotify/search?q=${encodeURIComponent(searchQuery)}`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Erreur de recherche");
+    }
+
+    setSearchResults(data.tracks || []);
+  } catch (error) {
+    console.error(error);
+    setSearchResults([]);
+    setSearchError("Impossible de rechercher sur Spotify");
+  } finally {
+    setIsSearching(false);
+  }
+};
 
   const totalDuration = selectedTracks.reduce((acc, track) => {
     const [minutes, seconds] = track.duration.split(":").map(Number);
@@ -271,7 +267,12 @@ export default function CreatePlaylist() {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10 bg-gray-800/50 border-violet-500/30 text-white placeholder:text-gray-500 focus:border-violet-400 focus:ring-violet-400/20"
-                      onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSearch();
+                        }
+                      }}
                     />
                   </div>
                   <Button
