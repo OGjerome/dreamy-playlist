@@ -59,7 +59,7 @@ export default function SharePage() {
                 <div className="flex gap-2">
                   <Input
                     readOnly
-                    value="https://dreamyplaylist.com/share/summer-vibes-2025"
+                    value="https://omnigroove.com/share/summer-vibes-2025"
                     className="bg-gray-800/50 border-violet-500/30 text-white"
                   />
                   <Button

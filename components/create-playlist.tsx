@@ -3,6 +3,9 @@
 import {
   ArrowLeft,
   CheckCircle,
+  ExternalLink,
+  Globe,
+  Lock,
   Music,
   Plus,
   Save,
@@ -12,6 +15,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -20,54 +24,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 
-const searchResults = [
-  {
-    id: 1,
-    title: "Blinding Lights",
-    artist: "The Weeknd",
-    album: "After Hours",
-    duration: "3:20",
-    platforms: {
-      spotify: true,
-      deezer: true,
-      youtube: true,
-      apple: true,
-      soundcloud: false,
-    },
-    cover: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: 2,
-    title: "Watermelon Sugar",
-    artist: "Harry Styles",
-    album: "Fine Line",
-    duration: "2:54",
-    platforms: {
-      spotify: true,
-      deezer: false,
-      youtube: true,
-      apple: true,
-      soundcloud: true,
-    },
-    cover: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: 3,
-    title: "Don't Start Now",
-    artist: "Dua Lipa",
-    album: "Future Nostalgia",
-    duration: "3:03",
-    platforms: {
-      spotify: true,
-      deezer: true,
-      youtube: false,
-      apple: true,
-      soundcloud: false,
-    },
-    cover: "/placeholder.svg?height=40&width=40",
-  },
-];
+type Track = {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  duration: string;
+  cover: string;
+  spotifyId: string;
+  spotifyUri: string;
+  platforms: {
+    spotify: boolean;
+    deezer: boolean;
+    youtube: boolean;
+    apple: boolean;
+    soundcloud: boolean;
+  };
+};
 
 const platformIcons = {
   spotify: {
@@ -143,27 +118,131 @@ const platformIcons = {
 };
 
 export default function CreatePlaylist() {
+  const router = useRouter();
+
   const [playlistName, setPlaylistName] = useState("");
   const [playlistDescription, setPlaylistDescription] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [selectedTracks, setSelectedTracks] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<Track[]>([]);
+  const [selectedTracks, setSelectedTracks] = useState<Track[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleAddTrack = (track: any) => {
+  const [searchError, setSearchError] = useState("");
+
+  // Sauvegarde en DB
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedPlaylistId, setSavedPlaylistId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState("");
+
+  // Export vers Spotify
+  const [isExporting, setIsExporting] = useState(false);
+  const [spotifyUrl, setSpotifyUrl] = useState<string | null>(null);
+  const [exportError, setExportError] = useState("");
+
+  const handleAddTrack = (track: Track) => {
     if (!selectedTracks.find((t) => t.id === track.id)) {
-      setSelectedTracks([...selectedTracks, track]);
+      setSelectedTracks((prev) => [...prev, track]);
     }
   };
 
-  const handleRemoveTrack = (trackId: number) => {
-    setSelectedTracks(selectedTracks.filter((t) => t.id !== trackId));
+  const handleRemoveTrack = (trackId: string) => {
+    setSelectedTracks((prev) => prev.filter((t) => t.id !== trackId));
   };
 
-  const handleSearch = () => {
-    setIsSearching(true);
-    // Simulate search delay
-    setTimeout(() => setIsSearching(false), 1000);
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setSearchError("");
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      setSearchError("");
+
+      const response = await fetch(
+        `/api/spotify/search?q=${encodeURIComponent(searchQuery)}`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Erreur de recherche");
+      }
+
+      setSearchResults(data.tracks || []);
+    } catch (error) {
+      console.error(error);
+      setSearchResults([]);
+      setSearchError("Impossible de rechercher sur Spotify");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!playlistName.trim() || selectedTracks.length === 0) return;
+
+    try {
+      setIsSaving(true);
+      setSaveError("");
+
+      const response = await fetch("/api/playlists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: playlistName,
+          description: playlistDescription,
+          isPublic,
+          tracks: selectedTracks,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Erreur lors de la sauvegarde");
+      }
+
+      setSavedPlaylistId(data.playlist.id);
+    } catch (error) {
+      console.error(error);
+      setSaveError(
+        error instanceof Error ? error.message : "Erreur lors de la sauvegarde"
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleExportToSpotify = async () => {
+    if (!savedPlaylistId) return;
+
+    try {
+      setIsExporting(true);
+      setExportError("");
+
+      const response = await fetch("/api/spotify/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playlistId: savedPlaylistId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Erreur lors de l'export");
+      }
+
+      setSpotifyUrl(data.spotifyUrl);
+    } catch (error) {
+      console.error(error);
+      setExportError(
+        error instanceof Error ? error.message : "Erreur lors de l'export"
+      );
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const totalDuration = selectedTracks.reduce((acc, track) => {
@@ -191,6 +270,7 @@ export default function CreatePlaylist() {
           <Button
             variant="ghost"
             className="text-gray-400 hover:text-white mb-4"
+            onClick={() => router.push("/dashboard")}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Retour au dashboard
@@ -238,6 +318,33 @@ export default function CreatePlaylist() {
                     className="bg-gray-800/50 border-violet-500/30 text-white placeholder:text-gray-500 focus:border-violet-400 focus:ring-violet-400/20 min-h-[100px]"
                   />
                 </div>
+
+                {/* Toggle Public/Privé */}
+                <div className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg border border-violet-500/20">
+                  <div className="flex items-center gap-2">
+                    {isPublic ? (
+                      <Globe className="w-4 h-4 text-violet-400" />
+                    ) : (
+                      <Lock className="w-4 h-4 text-gray-400" />
+                    )}
+                    <div>
+                      <p className="text-sm font-medium text-white">
+                        {isPublic ? "Playlist publique" : "Playlist privée"}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {isPublic
+                          ? "Visible par tout le monde sur Spotify"
+                          : "Seulement visible par vous"}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="isPublic"
+                    checked={isPublic}
+                    onCheckedChange={setIsPublic}
+                  />
+                </div>
+
                 <div className="flex items-center gap-4 p-4 bg-violet-500/10 rounded-lg border border-violet-500/20">
                   <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-blue-500 rounded-lg flex items-center justify-center">
                     <Music className="w-8 h-8 text-white" />
@@ -271,7 +378,12 @@ export default function CreatePlaylist() {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10 bg-gray-800/50 border-violet-500/30 text-white placeholder:text-gray-500 focus:border-violet-400 focus:ring-violet-400/20"
-                      onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSearch();
+                        }
+                      }}
                     />
                   </div>
                   <Button
@@ -289,14 +401,30 @@ export default function CreatePlaylist() {
                     <h4 className="text-sm font-medium text-gray-300">
                       Résultats de recherche
                     </h4>
+                    {searchError && (
+                      <p className="text-sm text-red-400">{searchError}</p>
+                    )}
                     <div className="space-y-2 max-h-80 overflow-y-auto">
                       {searchResults.map((track) => (
                         <div
                           key={track.id}
                           className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg hover:bg-gray-800/50 transition-colors"
                         >
-                          <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-blue-500 rounded flex items-center justify-center">
-                            <Music className="w-5 h-5 text-white" />
+                          {/* Cover de l'album Spotify */}
+                          <div className="w-10 h-10 rounded flex-shrink-0 overflow-hidden bg-gradient-to-br from-violet-500 to-blue-500">
+                            {track.cover && track.cover !== "/spotify.png" ? (
+                              <Image
+                                src={track.cover}
+                                alt={track.title}
+                                width={40}
+                                height={40}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Music className="w-5 h-5 text-white" />
+                              </div>
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="font-medium text-white truncate">
@@ -334,7 +462,7 @@ export default function CreatePlaylist() {
                           <Button
                             size="sm"
                             onClick={() => handleAddTrack(track)}
-                            disabled={selectedTracks.find(
+                            disabled={selectedTracks.some(
                               (t) => t.id === track.id
                             )}
                             className="bg-violet-500 hover:bg-violet-600 text-white border-0 disabled:opacity-50"
@@ -368,15 +496,65 @@ export default function CreatePlaylist() {
                   </Button>
                   <Button
                     size="sm"
-                    disabled={selectedTracks.length === 0 || !playlistName}
+                    disabled={
+                      selectedTracks.length === 0 ||
+                      !playlistName ||
+                      isSaving ||
+                      !!savedPlaylistId
+                    }
+                    onClick={handleSave}
                     className="bg-gradient-to-r from-violet-500 to-blue-500 hover:from-violet-600 hover:to-blue-600 text-white border-0 disabled:opacity-50"
                   >
                     <Save className="w-4 h-4 mr-2" />
-                    Sauvegarder
+                    {isSaving
+                      ? "Sauvegarde..."
+                      : savedPlaylistId
+                      ? "Sauvegardée ✓"
+                      : "Sauvegarder"}
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
+                {/* Feedback sauvegarde */}
+                {saveError && (
+                  <div className="mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                    <p className="text-sm text-red-400">{saveError}</p>
+                  </div>
+                )}
+
+                {savedPlaylistId && !spotifyUrl && (
+                  <div className="mb-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg flex items-center justify-between">
+                    <p className="text-sm text-green-400">
+                      ✓ Playlist sauvegardée ! Exportez-la maintenant vers
+                      Spotify.
+                    </p>
+                  </div>
+                )}
+
+                {/* Lien Spotify après export */}
+                {spotifyUrl && (
+                  <div className="mb-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg space-y-2">
+                    <p className="text-sm text-green-400 font-medium">
+                      ✓ Playlist exportée sur Spotify avec succès !
+                    </p>
+                    <a
+                      href={spotifyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm text-violet-400 hover:text-violet-300 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Ouvrir sur Spotify
+                    </a>
+                  </div>
+                )}
+
+                {exportError && (
+                  <div className="mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                    <p className="text-sm text-red-400">{exportError}</p>
+                  </div>
+                )}
+
                 {selectedTracks.length === 0 ? (
                   <div className="text-center py-12">
                     <Music className="w-16 h-16 text-gray-600 mx-auto mb-4" />
@@ -397,8 +575,21 @@ export default function CreatePlaylist() {
                         <span className="text-gray-500 font-mono text-sm w-6">
                           {index + 1}
                         </span>
-                        <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-blue-500 rounded flex items-center justify-center">
-                          <Music className="w-5 h-5 text-white" />
+                        {/* Cover */}
+                        <div className="w-10 h-10 rounded flex-shrink-0 overflow-hidden bg-gradient-to-br from-violet-500 to-blue-500">
+                          {track.cover && track.cover !== "/spotify.png" ? (
+                            <Image
+                              src={track.cover}
+                              alt={track.title}
+                              width={40}
+                              height={40}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Music className="w-5 h-5 text-white" />
+                            </div>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-white truncate">
@@ -462,6 +653,70 @@ export default function CreatePlaylist() {
               </CardContent>
             </Card>
 
+            {/* Export vers Spotify */}
+            {savedPlaylistId && (
+              <Card className="bg-gray-900/50 border-green-500/20 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full overflow-hidden">
+                      <Image
+                        src="/spotify.png"
+                        alt="Spotify"
+                        width={20}
+                        height={20}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    Exporter vers Spotify
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-gray-400">
+                    Crée une nouvelle playlist dans votre compte Spotify avec
+                    tous les morceaux sélectionnés.
+                  </p>
+                  {spotifyUrl ? (
+                    <Button
+                      asChild
+                      className="w-full bg-[#1DB954] hover:bg-[#1aa34a] text-white border-0"
+                    >
+                      <a
+                        href={spotifyUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Ouvrir sur Spotify
+                      </a>
+                    </Button>
+                  ) : (
+                    <Button
+                      className="w-full bg-[#1DB954] hover:bg-[#1aa34a] text-white border-0 disabled:opacity-50"
+                      disabled={isExporting}
+                      onClick={handleExportToSpotify}
+                    >
+                      {isExporting ? (
+                        "Export en cours..."
+                      ) : (
+                        <>
+                          <div className="w-4 h-4 rounded-full overflow-hidden mr-2">
+                            <Image
+                              src="/spotify.png"
+                              alt="Spotify"
+                              width={16}
+                              height={16}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          Exporter vers Spotify
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Platform Availability */}
             {selectedTracks.length > 0 && (
               <Card className="bg-gray-900/50 border-violet-500/20 backdrop-blur-sm">
@@ -474,7 +729,10 @@ export default function CreatePlaylist() {
                   <div className="space-y-3">
                     {Object.entries(platformIcons).map(([platform, config]) => {
                       const availableCount = selectedTracks.filter(
-                        (track) => track.platforms[platform]
+                        (track) =>
+                          track.platforms[
+                            platform as keyof typeof track.platforms
+                          ]
                       ).length;
                       const percentage =
                         (availableCount / selectedTracks.length) * 100;

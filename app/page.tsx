@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { SpotifySignInButton } from "@/components/spotify-sign-in-button";
 import {
   Card,
   CardContent,
@@ -38,15 +39,12 @@ export default function LandingPage() {
             <Music className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold bg-gradient-to-r from-violet-400 to-blue-400 bg-clip-text text-transparent">
-            DreamyPlaylist
+            OmniGroove
           </span>
         </div>
-        <Button
-          asChild
-          className="bg-gray-900/50 border border-violet-500/30 text-violet-400 hover:bg-violet-500/20 hover:text-white backdrop-blur-sm"
-        >
-          <Link href="/dashboard">Essayez DreamyPlaylist</Link>
-        </Button>
+        <SpotifySignInButton className="bg-gray-900/50 border border-violet-500/30 text-violet-400 hover:bg-violet-500/20 hover:text-white backdrop-blur-sm">
+          Se connecter avec Spotify
+        </SpotifySignInButton>
       </nav>
 
       {/* Hero Section */}
@@ -314,12 +312,9 @@ export default function LandingPage() {
                     </span>
                   </div>
                 </div>
-                <Button
-                  asChild
-                  className="w-full mt-6 bg-gray-700 hover:bg-gray-600 text-white border-0"
-                >
-                  <Link href="/dashboard">🆓 Tester Gratuitement</Link>
-                </Button>
+                <SpotifySignInButton className="w-full mt-6 bg-gray-700 hover:bg-gray-600 text-white border-0">
+                  🆓 Tester Gratuitement
+                </SpotifySignInButton>
               </CardContent>
             </Card>
 
@@ -401,16 +396,15 @@ export default function LandingPage() {
             playlists incroyables dès aujourd&apos;hui.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              asChild
+            <SpotifySignInButton
               size="lg"
               className="bg-gradient-to-r from-violet-500 to-blue-500 hover:from-violet-600 hover:to-blue-600 text-white border-0 shadow-lg shadow-violet-500/30 text-lg px-8 py-6"
             >
-              <Link href="/dashboard">
+              <>
                 Commencer gratuitement
                 <ArrowRight className="w-5 h-5 ml-2" />
-              </Link>
-            </Button>
+              </>
+            </SpotifySignInButton>
             <Button
               asChild
               variant="outline"
@@ -432,7 +426,7 @@ export default function LandingPage() {
                 <Music className="w-5 h-5 text-white" />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-violet-400 to-blue-400 bg-clip-text text-transparent">
-                DreamyPlaylist
+                OmniGroove
               </span>
             </div>
             <div className="flex gap-6 text-gray-400">
@@ -451,7 +445,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="mt-8 border-gray-800 text-end text-sm text-gray-400">
-            <p>&copy; 2025 DreamyPlaylist. Tous droits réservés.</p>
+            <p>&copy; 2025 OmniGroove. Tous droits réservés.</p>
           </div>
         </div>
       </footer>
