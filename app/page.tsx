@@ -39,7 +39,7 @@ export default function LandingPage() {
             <Music className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold bg-gradient-to-r from-violet-400 to-blue-400 bg-clip-text text-transparent">
-            DreamyPlaylist
+            OmniGroove
           </span>
         </div>
         <SpotifySignInButton className="bg-gray-900/50 border border-violet-500/30 text-violet-400 hover:bg-violet-500/20 hover:text-white backdrop-blur-sm">
@@ -426,7 +426,7 @@ export default function LandingPage() {
                 <Music className="w-5 h-5 text-white" />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-violet-400 to-blue-400 bg-clip-text text-transparent">
-                DreamyPlaylist
+                OmniGroove
               </span>
             </div>
             <div className="flex gap-6 text-gray-400">
@@ -445,7 +445,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="mt-8 border-gray-800 text-end text-sm text-gray-400">
-            <p>&copy; 2025 DreamyPlaylist. Tous droits réservés.</p>
+            <p>&copy; 2025 OmniGroove. Tous droits réservés.</p>
           </div>
         </div>
       </footer>

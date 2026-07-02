@@ -5,6 +5,6 @@ services:
     environment:
       POSTGRES_USER: duser
       POSTGRES_PASSWORD: dpassword
-      POSTGRES_DB: dreamy_playlist_db
+      POSTGRES_DB: omnigroove_db
     ports:
       - "5432:5432"
