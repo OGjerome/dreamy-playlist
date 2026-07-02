@@ -290,6 +290,9 @@ const handleSearch = async () => {
                     <h4 className="text-sm font-medium text-gray-300">
                       Résultats de recherche
                     </h4>
+                    {searchError && (
+                      <p className="text-sm text-red-400">{searchError}</p>
+                    )}
                     <div className="space-y-2 max-h-80 overflow-y-auto">
                       {searchResults.map((track) => (
                         <div
@@ -335,7 +338,7 @@ const handleSearch = async () => {
                           <Button
                             size="sm"
                             onClick={() => handleAddTrack(track)}
-                            disabled={selectedTracks.find(
+                            disabled={selectedTracks.some(
                               (t) => t.id === track.id
                             )}
                             className="bg-violet-500 hover:bg-violet-600 text-white border-0 disabled:opacity-50"
@@ -475,7 +478,7 @@ const handleSearch = async () => {
                   <div className="space-y-3">
                     {Object.entries(platformIcons).map(([platform, config]) => {
                       const availableCount = selectedTracks.filter(
-                        (track) => track.platforms[platform]
+                        (track) => track.platforms[platform as keyof typeof track.platforms]
                       ).length;
                       const percentage =
                         (availableCount / selectedTracks.length) * 100;

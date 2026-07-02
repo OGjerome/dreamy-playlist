@@ -1,6 +1,28 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 
+interface SpotifyArtist {
+  name: string;
+}
+
+interface SpotifyImage {
+  url: string;
+}
+
+interface SpotifyAlbum {
+  name: string;
+  images: SpotifyImage[];
+}
+
+interface SpotifyTrackItem {
+  id: string;
+  name: string;
+  uri: string;
+  duration_ms: number;
+  artists: SpotifyArtist[];
+  album: SpotifyAlbum;
+}
+
 function formatDuration(ms: number) {
   const totalSeconds = Math.floor(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
@@ -52,10 +74,10 @@ export async function GET(request: Request) {
 
     const data = await response.json();
 
-    const tracks = (data.tracks?.items ?? []).map((item: any) => ({
+    const tracks = (data.tracks?.items ?? []).map((item: SpotifyTrackItem) => ({
       id: item.id,
       title: item.name,
-      artist: item.artists?.map((a: any) => a.name).join(", ") ?? "Inconnu",
+      artist: item.artists?.map((a: SpotifyArtist) => a.name).join(", ") ?? "Inconnu",
       album: item.album?.name ?? "Inconnu",
       duration: formatDuration(item.duration_ms ?? 0),
       cover: item.album?.images?.[0]?.url ?? "/spotify.png",
