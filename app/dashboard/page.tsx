@@ -94,16 +94,6 @@ const platformIcons = {
   ),
 };
 
-function formatDuration(totalSeconds: number) {
-  const hours = Math.floor(totalSeconds / 3600);
-  const mins = Math.floor((totalSeconds % 3600) / 60);
-  return hours > 0 ? `${hours}h ${mins}min` : `${mins}min`;
-}
-
-function getPlaylistDuration(tracks: TrackInPlaylist[]) {
-  // duration is stored in seconds in the DB
-  return 0; // For MVP we don't have duration in the select
-}
 
 function getPlaylistPlatforms(tracks: TrackInPlaylist[]): string[] {
   const platforms = new Set<string>();
@@ -341,14 +331,12 @@ export default function DashboardPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => toggleLike(playlist.id)}
-                                className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 h-auto ${
-                                  isLiked ? "text-red-400" : "text-gray-400"
-                                } hover:text-red-400`}
+                                className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 h-auto ${isLiked ? "text-red-400" : "text-gray-400"
+                                  } hover:text-red-400`}
                               >
                                 <Heart
-                                  className={`w-4 h-4 ${
-                                    isLiked ? "fill-current" : ""
-                                  }`}
+                                  className={`w-4 h-4 ${isLiked ? "fill-current" : ""
+                                    }`}
                                 />
                               </Button>
                               <DropdownMenu>
