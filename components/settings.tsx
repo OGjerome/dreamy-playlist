@@ -398,7 +398,7 @@ export default function Settings() {
                       Données analytiques
                     </Label>
                     <p className="text-sm text-gray-500">
-                      Aider à améliorer DreamyPlaylist avec vos données
+                      Aider à améliorer OmniGroove avec vos données
                       d&apos;usage
                     </p>
                   </div>
