@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
@@ -145,9 +145,58 @@ export default function DashboardPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!confirm("Êtes-vous sûr de vouloir supprimer cette playlist ?")) return;
+
     // Optimistic update
+    const previousPlaylists = playlists;
     setPlaylists((prev) => prev.filter((p) => p.id !== id));
+
+    try {
+      const res = await fetch(`/api/playlists/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        throw new Error("Erreur lors de la suppression");
+      }
+    } catch (err) {
+      console.error("Failed to delete playlist:", err);
+      // Rollback en cas d'erreur
+      setPlaylists(previousPlaylists);
+    }
   };
+
+  const [exportingId, setExportingId] = useState<string | null>(null);
+
+  const handleExport = async (playlistId: string) => {
+    try {
+      setExportingId(playlistId);
+      const res = await fetch("/api/spotify/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playlistId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Erreur lors de l'export");
+      }
+      if (data.spotifyUrl) {
+        window.open(data.spotifyUrl, "_blank");
+      }
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert("Erreur lors de l'export vers Spotify");
+    } finally {
+      setExportingId(null);
+    }
+  };
+
+  const handleShare = useCallback(async (shareToken: string) => {
+    const url = `${window.location.origin}/share/${shareToken}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      alert("Lien de partage copié !");
+    } catch {
+      prompt("Copiez ce lien :", url);
+    }
+  }, []);
 
   const firstName = session?.user?.name?.split(" ")[0] ?? "là";
 
@@ -359,7 +408,10 @@ export default function DashboardPage() {
                                       Modifier
                                     </Link>
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-violet-500/20">
+                                  <DropdownMenuItem
+                                    onClick={() => handleShare(playlist.shareToken)}
+                                    className="text-gray-300 hover:text-white hover:bg-violet-500/20 cursor-pointer"
+                                  >
                                     <Share2 className="mr-2 h-4 w-4" />
                                     Partager
                                   </DropdownMenuItem>
@@ -401,21 +453,23 @@ export default function DashboardPage() {
                           {/* Action buttons */}
                           <div className="flex gap-2">
                             <Button
-                              asChild
                               size="sm"
-                              className="flex-1 bg-gradient-to-r from-violet-500 to-blue-500 hover:from-violet-600 hover:to-blue-600 text-white border-0 text-xs shadow-lg shadow-violet-500/30"
+                              disabled={exportingId === playlist.id}
+                              onClick={() => handleExport(playlist.id)}
+                              className="flex-1 bg-gradient-to-r from-violet-500 to-blue-500 hover:from-violet-600 hover:to-blue-600 text-white border-0 text-xs shadow-lg shadow-violet-500/30 disabled:opacity-50"
                             >
-                              <Link href={`/dashboard/create`}>
-                                <Download className="w-3 h-3 mr-1" />
-                                Exporter
-                              </Link>
+                              <Download className="w-3 h-3 mr-1" />
+                              {exportingId === playlist.id ? "Export..." : "Exporter"}
                             </Button>
                             <Button
+                              asChild
                               size="sm"
                               variant="outline"
                               className="border-violet-500/30 text-violet-400 hover:bg-violet-500/20 hover:text-white text-xs bg-transparent"
                             >
-                              <ExternalLink className="w-3 h-3" />
+                              <Link href={`/share/${playlist.shareToken}`} target="_blank">
+                                <ExternalLink className="w-3 h-3" />
+                              </Link>
                             </Button>
                           </div>
                         </div>
