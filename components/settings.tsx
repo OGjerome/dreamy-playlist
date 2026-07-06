@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   ArrowLeft,
   User,
@@ -48,6 +49,7 @@ import {
 } from "@/components/ui/dialog";
 
 export default function Settings() {
+  const { data: session } = useSession();
   const [showPassword, setShowPassword] = useState(false);
   const [notifications, setNotifications] = useState({
     email: true,
@@ -60,6 +62,28 @@ export default function Settings() {
     shareStats: true,
     allowAnalytics: true,
   });
+
+  // Extraire les informations de l'utilisateur depuis la session
+  const userName = session?.user?.name ?? "";
+  const userEmail = session?.user?.email ?? "";
+  const userImage = session?.user?.image ?? "";
+
+  // Séparer le nom en prénom/nom
+  const nameParts = userName.split(" ");
+  const firstName = nameParts[0] ?? "";
+  const lastName = nameParts.slice(1).join(" ") ?? "";
+
+  // Initiales pour l'avatar
+  const initials = userName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "??";
+
+  // Le plan est FREE par défaut (pas de Stripe intégré pour l'instant)
+  // TODO: Récupérer le plan depuis l'API quand Stripe sera intégré
+  const userPlan = "FREE" as "FREE" | "PREMIUM";
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -102,9 +126,9 @@ export default function Settings() {
               <CardContent className="space-y-6">
                 <div className="flex items-center gap-6">
                   <Avatar className="w-20 h-20 border-2 border-violet-500/30">
-                    <AvatarImage src="/placeholder-user.jpg" alt="Avatar" />
+                    <AvatarImage src={userImage} alt="Avatar" />
                     <AvatarFallback className="bg-gradient-to-r from-violet-500 to-blue-500 text-white text-xl">
-                      JD
+                      {initials}
                     </AvatarFallback>
                   </Avatar>
                   <div className="space-y-2">
@@ -131,7 +155,8 @@ export default function Settings() {
                     </Label>
                     <Input
                       id="firstName"
-                      defaultValue="John"
+                      defaultValue={firstName}
+                      placeholder="Votre prénom"
                       className="bg-gray-800/50 border-violet-500/30 text-white focus:border-violet-400 focus:ring-violet-400/20"
                     />
                   </div>
@@ -141,7 +166,8 @@ export default function Settings() {
                     </Label>
                     <Input
                       id="lastName"
-                      defaultValue="Doe"
+                      defaultValue={lastName}
+                      placeholder="Votre nom"
                       className="bg-gray-800/50 border-violet-500/30 text-white focus:border-violet-400 focus:ring-violet-400/20"
                     />
                   </div>
@@ -154,7 +180,8 @@ export default function Settings() {
                   <Input
                     id="email"
                     type="email"
-                    defaultValue="john@example.com"
+                    defaultValue={userEmail}
+                    placeholder="votre@email.com"
                     className="bg-gray-800/50 border-violet-500/30 text-white focus:border-violet-400 focus:ring-violet-400/20"
                   />
                 </div>
@@ -421,51 +448,73 @@ export default function Settings() {
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
                   <Crown className="w-5 h-5 text-yellow-400" />
-                  Abonnement Premium
+                  Abonnement
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="text-center">
-                  <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 mb-2">
-                    Premium Actif
-                  </Badge>
-                  <p className="text-gray-400 text-sm">
-                    Renouvellement le 15 janvier 2025
-                  </p>
+                  {userPlan === "PREMIUM" ? (
+                    <>
+                      <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 mb-2">
+                        Premium Actif
+                      </Badge>
+                      <p className="text-gray-400 text-sm">
+                        Abonnement actif
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30 mb-2">
+                        Plan Gratuit
+                      </Badge>
+                      <p className="text-gray-400 text-sm">
+                        Passez au Premium pour des fonctionnalités illimitées
+                      </p>
+                    </>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Plan:</span>
-                    <span className="text-white">Premium Mensuel</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Prix:</span>
-                    <span className="text-white">9,99€/mois</span>
+                    <span className="text-white">
+                      {userPlan === "PREMIUM" ? "Premium" : "Gratuit"}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Plateformes:</span>
-                    <span className="text-white">Illimitées</span>
+                    <span className="text-white">
+                      {userPlan === "PREMIUM" ? "Illimitées" : "Spotify uniquement"}
+                    </span>
                   </div>
                 </div>
 
                 <Separator className="bg-violet-500/20" />
 
                 <div className="space-y-2">
-                  <Button
-                    variant="outline"
-                    className="w-full border-violet-500/30 text-violet-400 hover:bg-violet-500/20 hover:text-white bg-transparent"
-                  >
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    Gérer l&apos;abonnement
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full border-gray-500/30 text-gray-400 hover:bg-gray-500/20 hover:text-white bg-transparent"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Télécharger la facture
-                  </Button>
+                  {userPlan === "PREMIUM" ? (
+                    <Button
+                      variant="outline"
+                      className="w-full border-violet-500/30 text-violet-400 hover:bg-violet-500/20 hover:text-white bg-transparent"
+                    >
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Gérer l&apos;abonnement
+                    </Button>
+                  ) : (
+                    <Button className="w-full bg-gradient-to-r from-violet-500 to-blue-500 hover:from-violet-600 hover:to-blue-600 text-white border-0">
+                      <Crown className="w-4 h-4 mr-2" />
+                      Passer au Premium
+                    </Button>
+                  )}
+                  {userPlan === "PREMIUM" && (
+                    <Button
+                      variant="outline"
+                      className="w-full border-gray-500/30 text-gray-400 hover:bg-gray-500/20 hover:text-white bg-transparent"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Télécharger la facture
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
