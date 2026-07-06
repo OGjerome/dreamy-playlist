@@ -1,7 +1,8 @@
 "use client";
 
-import PlaylistDetail from "@/components/playlist-detail";
+import { redirect } from "next/navigation";
 
 export default function PlaylistsPage() {
-  return <PlaylistDetail />;
+  // Redirige vers le dashboard qui contient la liste des playlists
+  redirect("/dashboard");
 }

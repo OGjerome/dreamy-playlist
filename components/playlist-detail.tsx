@@ -5,6 +5,7 @@ import {
   Clock,
   Download,
   Edit3,
+  ExternalLink,
   Filter,
   Heart,
   MoreHorizontal,
@@ -18,7 +19,8 @@ import {
   XCircle,
 } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,96 +43,46 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const tracks = [
-  {
-    id: 1,
-    title: "Blinding Lights",
-    artist: "The Weeknd",
-    album: "After Hours",
-    albumCover:
-      "https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36",
-    duration: "3:20",
-    isLiked: true,
-    platforms: {
-      spotify: true,
-      deezer: true,
-      youtube: true,
-      apple: true,
-      soundcloud: false,
-    },
-  },
-  {
-    id: 2,
-    title: "Billie Jean",
-    artist: "Michael Jackson",
-    album: "Thriller",
-    albumCover:
-      "https://cdn-images.dzcdn.net/images/cover/544862aa5be45bc82ad4ab1a14daf63a/1900x1900-000000-80-0-0.jpg",
-    duration: "2:54",
-    isLiked: false,
-    platforms: {
-      spotify: true,
-      deezer: false,
-      youtube: true,
-      apple: true,
-      soundcloud: true,
-    },
-  },
-  {
-    id: 3,
-    title: "SICKO MODE",
-    artist: "Travis Scott",
-    album: "ASTROWORLD",
-    albumCover:
-      "https://m.media-amazon.com/images/I/81nFF-rXdRL._UF894,1000_QL80_.jpg",
-    duration: "3:23",
-    isLiked: true,
-    platforms: {
-      spotify: true,
-      deezer: true,
-      youtube: true,
-      apple: false,
-      soundcloud: true,
-    },
-  },
-  {
-    id: 4,
-    title: "Don't Start Now",
-    artist: "Dua Lipa",
-    album: "Future Nostalgia",
-    albumCover:
-      "https://i.scdn.co/image/ab67616d0000b273c35ea649223a519a9ad51ccf",
-    duration: "3:03",
-    isLiked: true,
-    platforms: {
-      spotify: true,
-      deezer: true,
-      youtube: false,
-      apple: true,
-      soundcloud: false,
-    },
-  },
-  {
-    id: 5,
-    title: "Good 4 U",
-    artist: "Olivia Rodrigo",
-    album: "Sour",
-    albumCover:
-      "https://i.scdn.co/image/ab67616d0000b273670ec029374e082f921f9f74",
-    duration: "2:58",
-    isLiked: false,
-    platforms: {
-      spotify: false,
-      deezer: true,
-      youtube: true,
-      apple: true,
-      soundcloud: true,
-    },
-  },
-];
+interface PlatformLink {
+  id: string;
+  platform: string;
+  externalId: string;
+  url: string;
+}
 
-const platformIcons = {
-  spotify: {
+interface TrackData {
+  id: string;
+  title: string;
+  artist: string;
+  album: string | null;
+  duration: number; // en secondes
+  imageUrl: string | null;
+  links: PlatformLink[];
+}
+
+interface TrackInPlaylist {
+  position: number;
+  track: TrackData;
+}
+
+interface PlaylistData {
+  id: string;
+  title: string;
+  description: string | null;
+  isPublic: boolean;
+  shareToken: string;
+  ownerId: string;
+  owner: {
+    name: string | null;
+    image: string | null;
+  };
+  tracks: TrackInPlaylist[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+const platformIcons: Record<string, { name: string; component: React.ReactNode }> = {
+  SPOTIFY: {
     name: "Spotify",
     component: (
       <div className="w-6 h-6 rounded-full overflow-hidden shadow-lg">
@@ -144,7 +96,7 @@ const platformIcons = {
       </div>
     ),
   },
-  deezer: {
+  DEEZER: {
     name: "Deezer",
     component: (
       <div className="w-6 h-6 rounded-full overflow-hidden shadow-lg">
@@ -158,7 +110,7 @@ const platformIcons = {
       </div>
     ),
   },
-  youtube: {
+  YOUTUBE_MUSIC: {
     name: "YouTube Music",
     component: (
       <div className="w-6 h-6 rounded-full overflow-hidden shadow-lg">
@@ -172,7 +124,7 @@ const platformIcons = {
       </div>
     ),
   },
-  apple: {
+  APPLE_MUSIC: {
     name: "Apple Music",
     component: (
       <div className="w-6 h-6 rounded-full overflow-hidden shadow-lg">
@@ -186,7 +138,7 @@ const platformIcons = {
       </div>
     ),
   },
-  soundcloud: {
+  SOUNDCLOUD: {
     name: "SoundCloud",
     component: (
       <div className="w-6 h-6 rounded-full overflow-hidden shadow-lg">
@@ -202,12 +154,71 @@ const platformIcons = {
   },
 };
 
-export default function PlaylistDetail() {
-  const [selectedTracks, setSelectedTracks] = useState<number[]>([]);
+function formatDuration(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+
+function formatTotalDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  return hours > 0 ? `${hours}h ${mins}min` : `${mins}min`;
+}
+
+function getPlaylistCover(tracks: TrackInPlaylist[]): string | null {
+  for (const t of tracks) {
+    if (t.track.imageUrl) return t.track.imageUrl;
+  }
+  return null;
+}
+
+function getPlaylistPlatforms(tracks: TrackInPlaylist[]): string[] {
+  const platforms = new Set<string>();
+  for (const t of tracks) {
+    for (const link of t.track.links) {
+      platforms.add(link.platform);
+    }
+  }
+  return Array.from(platforms);
+}
+
+interface PlaylistDetailProps {
+  playlistId: string;
+}
+
+export default function PlaylistDetail({ playlistId }: PlaylistDetailProps) {
+  const router = useRouter();
+  const [playlist, setPlaylist] = useState<PlaylistData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selectedTracks, setSelectedTracks] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
-  const handleSelectTrack = (trackId: number) => {
+  useEffect(() => {
+    async function fetchPlaylist() {
+      try {
+        setIsLoading(true);
+        const res = await fetch(`/api/playlists/${playlistId}`);
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Erreur lors du chargement");
+        }
+        const data = await res.json() as { playlist: PlaylistData };
+        setPlaylist(data.playlist);
+      } catch (err) {
+        console.error("Failed to fetch playlist:", err);
+        setError(err instanceof Error ? err.message : "Erreur de chargement");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchPlaylist();
+  }, [playlistId]);
+
+  const handleSelectTrack = (trackId: string) => {
     setSelectedTracks((prev) =>
       prev.includes(trackId)
         ? prev.filter((id) => id !== trackId)
@@ -216,12 +227,110 @@ export default function PlaylistDetail() {
   };
 
   const handleSelectAll = () => {
+    if (!playlist) return;
     setSelectedTracks(
-      selectedTracks.length === tracks.length
+      selectedTracks.length === playlist.tracks.length
         ? []
-        : tracks.map((track) => track.id)
+        : playlist.tracks.map((t) => t.track.id)
     );
   };
+
+  const handleExport = async () => {
+    if (!playlist) return;
+    try {
+      setExportingId(playlist.id);
+      const res = await fetch("/api/spotify/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playlistId: playlist.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Erreur lors de l'export");
+      }
+      if (data.spotifyUrl) {
+        window.open(data.spotifyUrl, "_blank");
+      }
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert(err instanceof Error ? err.message : "Erreur lors de l'export vers Spotify");
+    } finally {
+      setExportingId(null);
+    }
+  };
+
+  const handleShare = useCallback(async () => {
+    if (!playlist) return;
+    const url = `${window.location.origin}/share/${playlist.shareToken}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      alert("Lien de partage copié !");
+    } catch {
+      prompt("Copiez ce lien :", url);
+    }
+  }, [playlist]);
+
+  const handleDelete = async () => {
+    if (!playlist) return;
+    if (!confirm("Êtes-vous sûr de vouloir supprimer cette playlist ?")) return;
+    try {
+      const res = await fetch(`/api/playlists/${playlist.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Erreur lors de la suppression");
+      router.push("/dashboard");
+    } catch (err) {
+      console.error("Failed to delete:", err);
+      alert("Erreur lors de la suppression");
+    }
+  };
+
+  // Affichage chargement
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Music className="w-12 h-12 text-violet-400 mx-auto animate-pulse" />
+          <p className="text-gray-400">Chargement de la playlist...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Affichage erreur
+  if (error || !playlist) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <XCircle className="w-12 h-12 text-red-400 mx-auto" />
+          <p className="text-gray-400">{error || "Playlist introuvable"}</p>
+          <Button
+            variant="outline"
+            onClick={() => router.push("/dashboard")}
+            className="border-violet-500/30 text-violet-400 hover:bg-violet-500/20 hover:text-white bg-transparent"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour au dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const cover = getPlaylistCover(playlist.tracks);
+  const platforms = getPlaylistPlatforms(playlist.tracks);
+  const totalDuration = playlist.tracks.reduce(
+    (acc, t) => acc + t.track.duration,
+    0
+  );
+
+  // Filtrer les tracks par recherche
+  const filteredTracks = searchQuery.trim()
+    ? playlist.tracks.filter(
+        (t) =>
+          t.track.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          t.track.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (t.track.album ?? "").toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : playlist.tracks;
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -238,33 +347,42 @@ export default function PlaylistDetail() {
             <Button
               variant="ghost"
               className="text-gray-400 hover:text-white mb-6"
+              onClick={() => router.push("/dashboard")}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Retour aux playlists
             </Button>
 
             <div className="flex items-start gap-6">
-              <div className="w-48 h-48 rounded-md flex items-center justify-center">
-                <Image
-                  src="https://external-preview.redd.it/skeleton-wlr-very-chill-playlist-v0-SQkNKj5s_4m-OYB8SOapRtNf3tf1oT3ZQcdev8Y0UJI.jpg?auto=webp&s=c622a1c1963cb1e77137abd029d4f95b677d59b2"
-                  alt="Playlist Cover"
-                  width={192}
-                  height={192}
-                  className="w-full h-full object-cover rounded-md"
-                />
+              <div className="w-48 h-48 rounded-md flex items-center justify-center overflow-hidden bg-gradient-to-br from-violet-500 to-blue-500">
+                {cover ? (
+                  <Image
+                    src={cover}
+                    alt={playlist.title}
+                    width={192}
+                    height={192}
+                    className="w-full h-full object-cover rounded-md"
+                  />
+                ) : (
+                  <Music className="w-16 h-16 text-white" />
+                )}
               </div>
 
               <div className="flex-1 space-y-4">
                 <div>
                   <Badge className="bg-violet-500/20 text-violet-300 border-violet-500/30 mb-2">
-                    Playlist
+                    {playlist.isPublic ? "Playlist publique" : "Playlist privée"}
                   </Badge>
                   <h1 className="text-4xl font-bold text-white mb-2">
-                    Summer Vibes 2025
+                    {playlist.title}
                   </h1>
                   <p className="text-gray-400">
-                    Créée par John Doe • 24 morceaux, 1h 32min
+                    {playlist.owner.name ? `Créée par ${playlist.owner.name}` : "Ma playlist"} •{" "}
+                    {playlist.tracks.length} morceaux, {formatTotalDuration(totalDuration)}
                   </p>
+                  {playlist.description && (
+                    <p className="text-gray-500 text-sm mt-1">{playlist.description}</p>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-4">
@@ -304,16 +422,25 @@ export default function PlaylistDetail() {
                         <Edit3 className="mr-2 h-4 w-4" />
                         Modifier la playlist
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-violet-500/20">
+                      <DropdownMenuItem
+                        onClick={handleShare}
+                        className="text-gray-300 hover:text-white hover:bg-violet-500/20 cursor-pointer"
+                      >
                         <Share2 className="mr-2 h-4 w-4" />
                         Partager
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-violet-500/20">
+                      <DropdownMenuItem
+                        onClick={handleExport}
+                        className="text-gray-300 hover:text-white hover:bg-violet-500/20 cursor-pointer"
+                      >
                         <Download className="mr-2 h-4 w-4" />
-                        Exporter
+                        Exporter vers Spotify
                       </DropdownMenuItem>
                       <DropdownMenuSeparator className="bg-violet-500/30" />
-                      <DropdownMenuItem className="text-red-400 hover:text-red-300 hover:bg-red-500/20">
+                      <DropdownMenuItem
+                        onClick={handleDelete}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/20 cursor-pointer"
+                      >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Supprimer
                       </DropdownMenuItem>
@@ -324,9 +451,16 @@ export default function PlaylistDetail() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-400">Disponible sur:</span>
                   <div className="flex gap-2">
-                    {Object.entries(platformIcons).map(([platform, config]) => (
-                      <div key={platform}>{config.component}</div>
+                    {platforms.map((platform) => (
+                      <div key={platform}>
+                        {platformIcons[platform]?.component}
+                      </div>
                     ))}
+                    {platforms.length === 0 && (
+                      <span className="text-xs text-gray-600">
+                        Aucune plateforme
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -366,10 +500,12 @@ export default function PlaylistDetail() {
                   </span>
                   <Button
                     size="sm"
+                    onClick={handleExport}
+                    disabled={exportingId === playlist.id}
                     className="bg-gradient-to-r from-violet-500 to-blue-500 hover:from-violet-600 hover:to-blue-600 text-white border-0"
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Exporter la sélection
+                    {exportingId === playlist.id ? "Export..." : "Exporter la sélection"}
                   </Button>
                 </div>
               )}
@@ -386,133 +522,142 @@ export default function PlaylistDetail() {
           {/* Tracks Table */}
           <Card className="bg-gray-900/50 border-violet-500/20 backdrop-blur-sm">
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-violet-500/20 hover:bg-transparent">
-                    <TableHead className="w-12">
-                      <Checkbox
-                        checked={selectedTracks.length === tracks.length}
-                        onCheckedChange={handleSelectAll}
-                        className="border-violet-500/30 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
-                      />
-                    </TableHead>
-                    <TableHead className="text-gray-400">#</TableHead>
-                    <TableHead className="text-gray-400">Titre</TableHead>
-                    <TableHead className="text-gray-400">Album</TableHead>
-                    <TableHead className="text-gray-400">Plateformes</TableHead>
-                    <TableHead className="text-gray-400 text-right">
-                      <Clock className="w-4 h-4 ml-auto" />
-                    </TableHead>
-                    <TableHead className="w-12"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tracks.map((track, index) => (
-                    <TableRow
-                      key={track.id}
-                      className="border-violet-500/10 hover:bg-violet-500/5 group"
-                    >
-                      <TableCell>
+              {filteredTracks.length === 0 ? (
+                <div className="text-center py-12">
+                  <Music className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-400">
+                    {searchQuery ? "Aucun résultat" : "Aucun morceau dans cette playlist"}
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-violet-500/20 hover:bg-transparent">
+                      <TableHead className="w-12">
                         <Checkbox
-                          checked={selectedTracks.includes(track.id)}
-                          onCheckedChange={() => handleSelectTrack(track.id)}
+                          checked={selectedTracks.length === playlist.tracks.length && playlist.tracks.length > 0}
+                          onCheckedChange={handleSelectAll}
                           className="border-violet-500/30 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
                         />
-                      </TableCell>
-                      <TableCell className="text-gray-400 font-mono text-sm">
-                        {index + 1}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-md flex items-center justify-center">
-                            <Image
-                              src={track.albumCover}
-                              alt={track.title}
-                              width={40}
-                              height={40}
-                              className="w-full h-full object-cover rounded-md"
-                            />
-                          </div>
-                          <div>
-                            <div className="font-medium text-white">
-                              {track.title}
+                      </TableHead>
+                      <TableHead className="text-gray-400">#</TableHead>
+                      <TableHead className="text-gray-400">Titre</TableHead>
+                      <TableHead className="text-gray-400">Album</TableHead>
+                      <TableHead className="text-gray-400">Plateformes</TableHead>
+                      <TableHead className="text-gray-400 text-right">
+                        <Clock className="w-4 h-4 ml-auto" />
+                      </TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTracks.map((tip, index) => (
+                      <TableRow
+                        key={tip.track.id}
+                        className="border-violet-500/10 hover:bg-violet-500/5 group"
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedTracks.includes(tip.track.id)}
+                            onCheckedChange={() => handleSelectTrack(tip.track.id)}
+                            className="border-violet-500/30 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
+                          />
+                        </TableCell>
+                        <TableCell className="text-gray-400 font-mono text-sm">
+                          {index + 1}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-md flex items-center justify-center overflow-hidden bg-gradient-to-br from-violet-500 to-blue-500">
+                              {tip.track.imageUrl ? (
+                                <Image
+                                  src={tip.track.imageUrl}
+                                  alt={tip.track.title}
+                                  width={40}
+                                  height={40}
+                                  className="w-full h-full object-cover rounded-md"
+                                />
+                              ) : (
+                                <Music className="w-5 h-5 text-white" />
+                              )}
                             </div>
-                            <div className="text-sm text-gray-400">
-                              {track.artist}
+                            <div>
+                              <div className="font-medium text-white">
+                                {tip.track.title}
+                              </div>
+                              <div className="text-sm text-gray-400">
+                                {tip.track.artist}
+                              </div>
                             </div>
                           </div>
-                          {track.isLiked && (
-                            <Heart className="w-4 h-4 text-red-400 fill-current" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-gray-400">
-                        {track.album}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {Object.entries(track.platforms).map(
-                            ([platform, available]) => (
-                              <div key={platform}>
-                                {available ? (
-                                  platformIcons[
-                                    platform as keyof typeof platformIcons
-                                  ]?.component || (
-                                    <div className="w-5 h-5 bg-gray-500 rounded-full flex items-center justify-center">
-                                      <Music className="w-3 h-3 text-white" />
-                                    </div>
-                                  )
-                                ) : (
-                                  <div className="w-5 h-5 bg-gray-700 rounded-full flex items-center justify-center">
-                                    <XCircle className="w-3 h-3 text-gray-500" />
+                        </TableCell>
+                        <TableCell className="text-gray-400">
+                          {tip.track.album ?? "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {tip.track.links.map((link) => (
+                              <div key={link.id}>
+                                {platformIcons[link.platform]?.component || (
+                                  <div className="w-5 h-5 bg-gray-500 rounded-full flex items-center justify-center">
+                                    <Music className="w-3 h-3 text-white" />
                                   </div>
                                 )}
                               </div>
-                            )
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-gray-400 text-right font-mono text-sm">
-                        {track.duration}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white"
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className="bg-gray-900/95 backdrop-blur-xl border-violet-500/30">
-                            <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-violet-500/20">
-                              <Play className="mr-2 h-4 w-4" />
-                              Écouter
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-violet-500/20">
-                              <Heart className="mr-2 h-4 w-4" />
-                              {track.isLiked
-                                ? "Retirer des favoris"
-                                : "Ajouter aux favoris"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-violet-500/20">
-                              <Share2 className="mr-2 h-4 w-4" />
-                              Partager
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-violet-500/30" />
-                            <DropdownMenuItem className="text-red-400 hover:text-red-300 hover:bg-red-500/20">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Retirer de la playlist
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                            ))}
+                            {tip.track.links.length === 0 && (
+                              <span className="text-xs text-gray-600">—</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-gray-400 text-right font-mono text-sm">
+                          {formatDuration(tip.track.duration)}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white"
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="bg-gray-900/95 backdrop-blur-xl border-violet-500/30">
+                              <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-violet-500/20">
+                                <Play className="mr-2 h-4 w-4" />
+                                Écouter
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-violet-500/20">
+                                <Share2 className="mr-2 h-4 w-4" />
+                                Partager
+                              </DropdownMenuItem>
+                              {tip.track.links.find(l => l.platform === "SPOTIFY") && (
+                                <DropdownMenuItem asChild className="text-gray-300 hover:text-white hover:bg-violet-500/20">
+                                  <a
+                                    href={tip.track.links.find(l => l.platform === "SPOTIFY")!.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                    Ouvrir sur Spotify
+                                  </a>
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator className="bg-violet-500/30" />
+                              <DropdownMenuItem className="text-red-400 hover:text-red-300 hover:bg-red-500/20">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Retirer de la playlist
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
 
@@ -525,7 +670,11 @@ export default function PlaylistDetail() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                <Button className="h-16 bg-black-600 hover:bg-black-800 text-white border-0 flex-col gap-2 shadow-lg">
+                <Button
+                  onClick={handleExport}
+                  disabled={exportingId === playlist.id}
+                  className="h-16 bg-black-600 hover:bg-black-800 text-white border-0 flex-col gap-2 shadow-lg"
+                >
                   <div className="w-6 h-6  ">
                     <Image
                       src="/spotify.png"
@@ -535,9 +684,9 @@ export default function PlaylistDetail() {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  Spotify
+                  {exportingId === playlist.id ? "Export..." : "Spotify"}
                 </Button>
-                <Button className="h-16 bg-white hover:bg-gray-200 text-black border-0 flex-col gap-2 shadow-lg shadow-purple-500/30">
+                <Button className="h-16 bg-white hover:bg-gray-200 text-black border-0 flex-col gap-2 shadow-lg shadow-purple-500/30" disabled>
                   <div className="w-6 h-6  ">
                     <Image
                       src="/deezer.jpg"
@@ -547,9 +696,9 @@ export default function PlaylistDetail() {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  Deezer
+                  Deezer (bientôt)
                 </Button>
-                <Button className="h-16 bg-[#FD0100] hover:bg-red-600 text-white border-0 flex-col gap-2 shadow-lg shadow-red-500/30">
+                <Button className="h-16 bg-[#FD0100] hover:bg-red-600 text-white border-0 flex-col gap-2 shadow-lg shadow-red-500/30" disabled>
                   <div className="w-6 h-6 rounded-full overflow-hidden">
                     <Image
                       src="/youtube-music.png"
@@ -559,9 +708,9 @@ export default function PlaylistDetail() {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  YouTube Music
+                  YouTube Music (bientôt)
                 </Button>
-                <Button className="h-16 bg-[#FB435A] hover:bg-[#FB435A]/80 text-white border-0 flex-col gap-2 shadow-lg shadow-gray-500/30">
+                <Button className="h-16 bg-[#FB435A] hover:bg-[#FB435A]/80 text-white border-0 flex-col gap-2 shadow-lg shadow-gray-500/30" disabled>
                   <div className="w-6 h-6 rounded-full overflow-hidden">
                     <Image
                       src="/apple-music.png"
@@ -571,9 +720,9 @@ export default function PlaylistDetail() {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  Apple Music
+                  Apple Music (bientôt)
                 </Button>
-                <Button className="h-16 bg-[#FF5517] hover:bg-orange-700 text-white border-0 flex-col gap-2 shadow-lg shadow-orange-600/30">
+                <Button className="h-16 bg-[#FF5517] hover:bg-orange-700 text-white border-0 flex-col gap-2 shadow-lg shadow-orange-600/30" disabled>
                   <div className="w-6 h-6 rounded-full overflow-hidden">
                     <Image
                       src="/soundcloud.webp"
@@ -583,7 +732,7 @@ export default function PlaylistDetail() {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  SoundCloud
+                  SoundCloud (bientôt)
                 </Button>
               </div>
             </CardContent>

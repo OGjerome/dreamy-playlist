@@ -256,8 +256,12 @@ export default function DashboardPage() {
                 <Link2 className="h-4 w-4 text-green-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-white">1</div>
-                <p className="text-xs text-gray-400">Spotify connecté</p>
+                <div className="text-2xl font-bold text-white">
+                  {session?.accessToken ? "1" : "0"}
+                </div>
+                <p className="text-xs text-gray-400">
+                  {session?.accessToken ? "Spotify connecté" : "Aucune plateforme"}
+                </p>
               </CardContent>
             </Card>
 
