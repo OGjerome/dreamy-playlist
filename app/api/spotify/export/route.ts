@@ -2,6 +2,28 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * Parse le body d'une réponse Spotify en erreur.
+ * Retourne un message lisible ou le texte brut.
+ */
+async function parseSpotifyError(res: Response): Promise<string> {
+  try {
+    const text = await res.text();
+    try {
+      const json = JSON.parse(text);
+      // Format Spotify standard: { error: { status: 401, message: "..." } }
+      if (json?.error?.message) {
+        return `Spotify ${res.status}: ${json.error.message}`;
+      }
+      return `Spotify ${res.status}: ${text}`;
+    } catch {
+      return `Spotify ${res.status}: ${text}`;
+    }
+  } catch {
+    return `Spotify ${res.status}: impossible de lire la réponse`;
+  }
+}
+
 // POST /api/spotify/export
 // Body: { playlistId: string }
 // 1. Récupère la playlist en DB
@@ -14,7 +36,7 @@ export async function POST(request: Request) {
 
   if (!accessToken) {
     return NextResponse.json(
-      { error: "Utilisateur non connecté à Spotify" },
+      { error: "Utilisateur non connecté à Spotify. Veuillez vous reconnecter." },
       { status: 401 }
     );
   }
@@ -53,8 +75,10 @@ export async function POST(request: Request) {
     });
 
     if (!meRes.ok) {
+      const errMsg = await parseSpotifyError(meRes);
+      console.error("Spotify /me error:", errMsg);
       return NextResponse.json(
-        { error: "Impossible de récupérer le profil Spotify" },
+        { error: `Impossible de récupérer le profil Spotify. ${errMsg}` },
         { status: meRes.status }
       );
     }
@@ -80,10 +104,10 @@ export async function POST(request: Request) {
     );
 
     if (!createRes.ok) {
-      const err = await createRes.text();
-      console.error("Spotify create playlist error:", err);
+      const errMsg = await parseSpotifyError(createRes);
+      console.error("Spotify create playlist error:", errMsg);
       return NextResponse.json(
-        { error: "Impossible de créer la playlist sur Spotify" },
+        { error: `Impossible de créer la playlist sur Spotify. ${errMsg}` },
         { status: createRes.status }
       );
     }
@@ -124,12 +148,12 @@ export async function POST(request: Request) {
         );
 
         if (!addRes.ok) {
-          const err = await addRes.text();
-          console.error("Spotify add tracks error:", err);
+          const errMsg = await parseSpotifyError(addRes);
+          console.error("Spotify add tracks error:", errMsg);
           // On retourne quand même l'URL Spotify, la playlist est créée
           return NextResponse.json({
             spotifyUrl: spotifyPlaylist.external_urls.spotify,
-            warning: "Certains morceaux n'ont pas pu être ajoutés",
+            warning: `Certains morceaux n'ont pas pu être ajoutés. ${errMsg}`,
           });
         }
       }
@@ -141,8 +165,9 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Erreur export Spotify:", error);
+    const message = error instanceof Error ? error.message : "Erreur inconnue";
     return NextResponse.json(
-      { error: "Erreur lors de l'export vers Spotify" },
+      { error: `Erreur lors de l'export vers Spotify: ${message}` },
       { status: 500 }
     );
   }
