@@ -45,6 +45,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             "playlist-modify-private",
             "playlist-modify-public",
           ].join(" "),
+          show_dialog: "true",
         }).toString(),
     }),
   ],

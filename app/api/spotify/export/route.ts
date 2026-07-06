@@ -97,7 +97,7 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           name: playlist.title,
           description: playlist.description ?? "",
-          public: playlist.isPublic,
+          public: false, // Forcé en privé pour contourner les restrictions Spotify
         }),
         cache: "no-store",
       }
